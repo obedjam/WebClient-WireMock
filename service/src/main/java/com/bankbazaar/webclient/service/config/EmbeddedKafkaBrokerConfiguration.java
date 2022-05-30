@@ -1,4 +1,4 @@
-package com.bankbazaar.webclient.core.config;
+package com.bankbazaar.webclient.service.config;
 import java.util.*;
 import javax.annotation.PreDestroy;
 import org.springframework.context.annotation.Bean;

@@ -5,7 +5,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.Map;
 
 @Service
-public class WebClientService {
+public class OmdbApiCLient {
 
         private WebClient client = WebClient.create("http://www.omdbapi.com");
 

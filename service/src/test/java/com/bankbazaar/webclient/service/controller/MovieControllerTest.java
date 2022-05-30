@@ -18,7 +18,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
-public class WebClientTest {
+public class MovieControllerTest {
 
     @Test
     public void webClientTest() throws IOException {
@@ -31,9 +31,7 @@ public class WebClientTest {
         configureFor("localhost", 8080);
         stubFor(get(urlEqualTo("/movie?name=iron-man"))
                                 .willReturn(aResponse()
-                                .withStatus(200)
-                                .withHeader("Content-Type", "application/json")
-                                .withBody(jsonData)
+                                .withStatus(202)
                 ));
 
         CloseableHttpClient httpClient = HttpClients.createDefault();
@@ -41,11 +39,7 @@ public class WebClientTest {
         HttpResponse httpResponse = httpClient.execute(request);
 
         verify(getRequestedFor(urlEqualTo("/movie?name=iron-man")));
-        assertEquals(200, httpResponse.getStatusLine().getStatusCode());
-        assertEquals("application/json", httpResponse.getFirstHeader("Content-Type").getValue());
-
-        Map jsonMap = mapper.readValue(httpResponse.getEntity().getContent(), Map.class);
-        assertEquals(true, jsonMap.get("Response"));
+        assertEquals(202, httpResponse.getStatusLine().getStatusCode());
         wireMockServer.stop();
     }
     public String getResource(String resource) throws IOException {

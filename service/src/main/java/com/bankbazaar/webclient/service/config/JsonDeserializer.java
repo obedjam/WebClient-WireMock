@@ -1,4 +1,4 @@
-package com.bankbazaar.webclient.core.config;
+package com.bankbazaar.webclient.service.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
