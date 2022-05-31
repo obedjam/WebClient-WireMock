@@ -1,17 +1,28 @@
 package com.bankbazaar.webclient.service.service;
+import com.bankbazaar.webclient.core.model.MovieData;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.Map;
+import java.util.Optional;
 
 @Service
+@Slf4j
 public class OmdbApiCLient {
 
-        private WebClient client = WebClient.create("http://www.omdbapi.com");
+        @Value("${omdb.api.uri}")
+        private String uri;
 
-        public Map consumeApi(String movieName)
+        public Optional<MovieData> fetchMovieDetails(String movieName)
         {
-            return client.get().uri("/?t="+movieName+"&apikey=39e493d3").retrieve().bodyToMono(Map.class).block();
+            WebClient client = WebClient.create(uri);
+            MovieData response = client.get().uri("/?t="+movieName+"&apikey=39e493d3").retrieve().bodyToMono(MovieData.class).block();
+            if(response!=null && response.getResponse().equals(true))
+            {
+                return Optional.of(response);
+            }
+            return Optional.empty();
         }
 
 }

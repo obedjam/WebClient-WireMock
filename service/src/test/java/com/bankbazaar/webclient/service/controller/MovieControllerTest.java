@@ -10,16 +10,22 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Slf4j
+@SpringBootTest(properties = {"spring.kafka.bootstrap-servers=localhost:9092"}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles({"test"})
 public class MovieControllerTest {
-
+    @Value("${omdb.api.uri}")
+    private String uri;
     @Test
     public void webClientTest() throws IOException {
         WireMockServer wireMockServer = new WireMockServer();
@@ -28,18 +34,17 @@ public class MovieControllerTest {
         String jsonData = getResource("data.json");
 
         wireMockServer.start();
-        configureFor("localhost", 8080);
-        stubFor(get(urlEqualTo("/movie?name=iron-man"))
-                                .willReturn(aResponse()
-                                .withStatus(202)
-                ));
+        stubFor(get(urlEqualTo(uri+"/?t=iron-man&apikey=39e493d3")).willReturn(aResponse()
+                                .withStatus(200)
+                                .withBody(String.valueOf(equalTo(jsonData)))
+                )
+        );
 
         CloseableHttpClient httpClient = HttpClients.createDefault();
-        HttpGet request = new HttpGet("http://localhost:8080/movie?name=iron-man");
+        HttpGet request = new HttpGet(uri+"/?t=iron-man&apikey=39e493d3");
         HttpResponse httpResponse = httpClient.execute(request);
 
-        verify(getRequestedFor(urlEqualTo("/movie?name=iron-man")));
-        assertEquals(202, httpResponse.getStatusLine().getStatusCode());
+        assertEquals(200, httpResponse.getStatusLine().getStatusCode());
         wireMockServer.stop();
     }
     public String getResource(String resource) throws IOException {

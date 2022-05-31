@@ -8,6 +8,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+
 public class JsonSerializer<T> implements Serializer<T> {
     private final Gson gson = new GsonBuilder().create();
 

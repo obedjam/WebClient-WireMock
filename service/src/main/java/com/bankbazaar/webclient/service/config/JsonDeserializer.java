@@ -10,7 +10,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public class JsonDeserializer<T> implements Deserializer<T> {
-
+    public static final String CONFIG_VALUE_CLASS = "value.deserializer.class";
+    public static final String CONFIG_KEY_CLASS = "key.deserializer.class";
     private final Gson gson = new GsonBuilder().create();
 
     private Class<T> destinationClass;
