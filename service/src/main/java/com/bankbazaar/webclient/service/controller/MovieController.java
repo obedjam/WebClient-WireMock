@@ -1,4 +1,5 @@
 package com.bankbazaar.webclient.service.controller;
+import com.bankbazaar.webclient.core.model.Response;
 import com.bankbazaar.webclient.service.producer.KafkaProducer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,10 +16,11 @@ public class MovieController {
     private KafkaProducer kafkaProducer;
 
     @RequestMapping(value = "movie", method = RequestMethod.GET)
-    public ResponseEntity<String> postData(@RequestParam String name)
+    public ResponseEntity<Response> postData(@RequestParam String name)
     {
-        kafkaProducer.sendData(name);
-        return new ResponseEntity<>(HttpStatus.ACCEPTED);
+
+        Response response = kafkaProducer.sendData(name);
+        return new ResponseEntity<>(response,HttpStatus.ACCEPTED);
     }
 
 

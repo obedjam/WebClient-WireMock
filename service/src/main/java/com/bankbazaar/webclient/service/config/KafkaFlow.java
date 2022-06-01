@@ -1,6 +1,8 @@
 package com.bankbazaar.webclient.service.config;
 
 import com.bankbazaar.webclient.core.model.MovieData;
+import com.bankbazaar.webclient.core.model.Response;
+import com.bankbazaar.webclient.core.model.Status;
 import com.bankbazaar.webclient.service.service.FileUtil;
 import com.bankbazaar.webclient.service.service.OmdbApiCLient;
 import lombok.extern.slf4j.Slf4j;
@@ -36,35 +38,33 @@ public class KafkaFlow implements Serializable {
      */
 
     @Bean
-    public Consumer<KStream<String, String>> fileProcessor(@Qualifier("streamRetryTemplate") RetryTemplate retryTemplate)
+    public Consumer<KStream<String, Response>> fileProcessor(@Qualifier("streamRetryTemplate") RetryTemplate retryTemplate)
     {
         return kStream -> kStream.map((key, value) ->
                         retryTemplate.execute(
                                 retryContext ->
                                 {
-                                    Optional<MovieData> response = omdbApiCLient.fetchMovieDetails(value);
-                                    if(response.isPresent()) {
-                                        if (fileUtil.createFile(response.get().getTitle()).exists()) {
-                                            response.get().setResponse(false);
+                                        value.setStatus(Status.PROCESSING);
+                                        if (fileUtil.createFile(value.getName()).exists()) {
+                                            value.setStatus(Status.FAILURE);
                                         }
-                                        return new KeyValue<>(key, response.get());
-                                    }
-                                    return new KeyValue<>(key, null);
+                                        return new KeyValue<>(key, value);
                                 },
                                 context ->
                                 {
                                     log.error("retries exhausted",context.getLastThrowable());
-                                    return new KeyValue<>(key,null);
+                                    value.setStatus(Status.ERROR);
+                                    return new KeyValue<>(key,value);
                                 }
                         )
                 ).filter((key, value) -> value != null).split()
                 .branch(
-                        (key, value) -> value.getResponse().equals(true),
-                        Branched.withConsumer(stream -> stream.to("File_Processor", Produced.with(Serdes.String(), MovieDataSerdes.MovieDataSerde())))
+                        (key, value) -> value.getStatus().ordinal()<=1,
+                        Branched.withConsumer(stream -> stream.to("File_Processor", Produced.with(Serdes.String(), ResponseSerdes.ResponseSerde())))
                 )
                 .branch(
-                        (key, value) -> value.getResponse().equals(false),
-                        Branched.withConsumer(stream -> stream.to("Notification",Produced.with(Serdes.String(), MovieDataSerdes.MovieDataSerde())))
+                        (key, value) -> value.getStatus().ordinal()>1,
+                        Branched.withConsumer(stream -> stream.to("Notification",Produced.with(Serdes.String(), ResponseSerdes.ResponseSerde())))
                 );
     }
 
@@ -74,18 +74,25 @@ public class KafkaFlow implements Serializable {
      * Retry a maximum of 1 time if exception occurs;
      */
     @Bean
-    public Function<KStream<String, MovieData>, KStream<String,MovieData>> consumer(@Qualifier("streamRetryTemplate") RetryTemplate retryTemplate)
+    public Function<KStream<String, Response>, KStream<String,Response>> consumer(@Qualifier("streamRetryTemplate") RetryTemplate retryTemplate)
     {
         return kStream -> kStream.map((key, value) ->
                 retryTemplate.execute(
                         retryContext ->
                         {
-                            value.setResponse(fileUtil.writeFile(value));
-                            return new KeyValue<>(key,value);
+                            Optional<MovieData> response = omdbApiCLient.fetchMovieDetails(value.getName());
+                            if(response.isPresent()) {
+                                if(fileUtil.writeFile(response.get())) {
+                                    value.setStatus(Status.SUCCESS);
+                                    return new KeyValue<>(key, value);
+                                }
+                            }
+                            value.setStatus(Status.FAILURE);
+                            return new KeyValue<>(key, value);
                         }, context -> {
                             log.error("retries exhausted",context.getLastThrowable());
-                            value.setResponse(false);
-                            return new KeyValue<>(key,value);
+                            value.setStatus(Status.ERROR);
+                            return new KeyValue<>(key, value);
                         }
                 )
         ).filter((key, value) -> value != null);
@@ -93,18 +100,11 @@ public class KafkaFlow implements Serializable {
     }
 
     @Bean
-    public Consumer<KStream<String,MovieData>> notification()
+    public Consumer<KStream<String,Response>> notification()
     {
         return kStream -> kStream.foreach((key, value) ->
         {
-            if(value.getResponse())
-            {
-                log.info("SUCCESS");
-            }
-            else
-            {
-                log.info("FAILURE");
-            }
+            log.info(value.getStatus().toString());
         });
     }
 }
