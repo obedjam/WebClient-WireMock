@@ -6,8 +6,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping(value = "/")
 @Slf4j
@@ -17,7 +15,7 @@ public class MovieController {
     private KafkaProducer kafkaProducer;
 
     @RequestMapping(value = "movie", method = RequestMethod.GET)
-    public ResponseEntity<Map> postData(@RequestParam String name)
+    public ResponseEntity<String> postData(@RequestParam String name)
     {
         kafkaProducer.sendData(name);
         return new ResponseEntity<>(HttpStatus.ACCEPTED);

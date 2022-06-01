@@ -54,9 +54,7 @@ public class KafkaFlow implements Serializable {
                                 context ->
                                 {
                                     log.error("retries exhausted",context.getLastThrowable());
-                                    MovieData response = omdbApiCLient.fetchMovieDetails(value).get();
-                                    response.setResponse(false);
-                                    return new KeyValue<>(key,response);
+                                    return new KeyValue<>(key,null);
                                 }
                         )
                 ).filter((key, value) -> value != null).split()

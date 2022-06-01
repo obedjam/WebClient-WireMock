@@ -1,5 +1,4 @@
 package com.bankbazaar.webclient.service.config;
-import com.bankbazaar.webclient.core.model.MovieData;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.stream.annotation.StreamRetryTemplate;
 import org.springframework.context.annotation.Bean;
@@ -9,7 +8,6 @@ import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import java.io.Serializable;
-import java.util.Properties;
 
 @Configuration
 public class KafkaStreamsConfig implements Serializable {
@@ -31,13 +29,5 @@ public class KafkaStreamsConfig implements Serializable {
         retryTemplate.setBackOffPolicy(backOffPolicy);
         retryTemplate.setRetryPolicy(retryPolicy);
         return retryTemplate;
-    }
-
-    @Bean
-    void deserializerConfig()
-    {
-        Properties props = new Properties();
-        props.put("value.deserializer", JsonDeserializer.class.getName());
-        props.put(JsonDeserializer.CONFIG_VALUE_CLASS, MovieData.class.getName());
     }
 }
