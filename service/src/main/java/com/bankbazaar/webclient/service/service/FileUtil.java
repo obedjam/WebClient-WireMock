@@ -23,5 +23,10 @@ public class FileUtil {
             return false;
         }
     }
+
+    public Boolean fileExists(String name)
+    {
+        return createFile(name).exists();
+    }
 }
 

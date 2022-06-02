@@ -6,12 +6,11 @@ import com.bankbazaar.webclient.core.model.Status;
 import com.bankbazaar.webclient.service.service.FileUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.awaitility.Durations;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +27,8 @@ import java.io.*;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -35,14 +36,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {"spring.kafka.bootstrap-servers=localhost:9092"}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test"})
 @AutoConfigureMockMvc
-@AutoConfigureWireMock(port = 8282)
+@AutoConfigureWireMock(port = 0)
 class MovieControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
     @Autowired
     private FileUtil fileUtil;
-    @Value("${omdb.api.test.uri}")
+    @Value("${omdb.api.uri}")
     private String uri;
     @Test
     void movieControllerTest() throws Exception {
@@ -50,22 +51,17 @@ class MovieControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         String jsonData = getResource("data.json");
         stubFor(WireMock.get(urlEqualTo("/?t=iron-man&apikey=39e493d3")).willReturn(aResponse()
+                        .withHeader(CONTENT_TYPE, APPLICATION_JSON_VALUE)
                         .withStatus(200)
                         .withBody(jsonData)
                 )
         );
 
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-        HttpGet request = new HttpGet(uri+"/?t=iron-man&apikey=39e493d3");
-        HttpResponse httpResponse = httpClient.execute(request);
-        assertEquals(200, httpResponse.getStatusLine().getStatusCode());
-
-        MovieData movieData = mapper.readValue(httpResponse.getEntity().getContent(),MovieData.class);
-
+        MovieData movieData = mapper.readValue(jsonData,MovieData.class);
         /**
          * Check file doesn't exist
          */
-        File file1 = fileUtil.createFile("Inception");
+        File file1 = fileUtil.createFile("Iron Man Part 1");
         assertFalse(file1.exists());
 
         /**
@@ -73,9 +69,10 @@ class MovieControllerTest {
          * Validate api response
          * Check file creation
          */
-        Response response1 = consumeApi("Inception");
+        Response response1 = consumeApi("iron-man");
         assertEquals(Status.SUBMITTED, response1.getStatus());
         await().atMost(Durations.TEN_SECONDS).until(file1::exists);
+
 
         /**
          * Send duplicate
@@ -83,11 +80,12 @@ class MovieControllerTest {
          */
         assertEquals(Status.SUBMITTED, response1.getStatus());
         assertTrue(file1.exists());
+        file1.delete();
 
         /**
          * Check file doesn't exist
          */
-        File file2 = fileUtil.createFile("Iron Man");
+        File file2 = fileUtil.createFile("Iron Man Part 1");
         assertFalse(file2.exists());
 
         /**
@@ -96,12 +94,10 @@ class MovieControllerTest {
          * Check file creation
          * Validate file Content
          */
-        Response response2 = consumeApi("Iron-Man");
+        Response response2 = consumeApi("iron-man");
         assertEquals(Status.SUBMITTED, response2.getStatus());
         await().atMost(Durations.TEN_SECONDS).until(file2::exists);
         assertEquals(movieData, writeObject(file2));
-
-        file1.delete();
         file2.delete();
 
     }
